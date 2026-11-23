@@ -10,7 +10,7 @@
   </view>
 
   <view class="header">
-    <view class="subtitle">从PDF中选择自己想存的页码，一键存为jpg、png、pdf</view>
+    <view class="subtitle">从PDF中选择自己想存的页码，一键存图、存PDF</view>
   </view>
 
   <view class="empty" wx:if="{{viewState === 'empty'}}">

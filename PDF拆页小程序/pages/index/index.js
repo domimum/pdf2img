@@ -76,7 +76,7 @@ Page({
       return;
     }
     wx.openDocument({
-      filePath: this._localPath,
+      filePath: this._fullPath || this._localPath,
       fileType: 'pdf',
       showMenu: true,
       fail: () => wx.showToast({ title: '打开失败，请重新选择 PDF', icon: 'none' }),
@@ -97,6 +97,18 @@ Page({
       const bytes = new Uint8Array(ab);
       this._srcBytes = bytes;
       this._localPath = path;
+      // 全文查看用：复制一份以原 PDF 名称命名的文件。
+      // wx.openDocument 的标题取文件路径名，微信聊天文件是 hash 路径会显示乱码，
+      // 用真实文件名命名后标题栏就能显示正确的 PDF 名称。
+      try {
+        const safeName = (name || '文档.pdf').replace(/[\\/:*?"<>|]/g, '_');
+        const namedPath = wx.env.USER_DATA_PATH + '/' + safeName;
+        try { fs.unlinkSync(namedPath); } catch (e) {}   // 同名覆盖前先删，避免读到旧内容
+        fs.copyFileSync(path, namedPath);
+        this._fullPath = namedPath;
+      } catch (e) {
+        this._fullPath = path;   // 复制失败退回原路径，至少能打开
+      }
       const doc = await pdfLib.PDFDocument.load(bytes, { ignoreEncryption: true });
       this._doc = doc;
       const n = doc.getPageCount();
