@@ -1,0 +1,22 @@
+{
+  "name": "pdf-render-server",
+  "version": "1.0.0",
+  "description": "PDF 存图助手的渲染服务：接收 PDF，渲染指定页为高清图片返回",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "4.18.2",
+    "multer": "1.4.5-lts.1",
+    "pdfjs-dist": "3.11.174",
+    "@napi-rs/canvas": "1.1.1",
+    "cors": "2.8.5"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "1.1.1"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

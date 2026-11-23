@@ -1,0 +1,35 @@
+{
+  "name": "pdf-page-splitter",
+  "version": "1.0.0",
+  "description": "PDF 拆页助手 - 选中哪页就把哪页保存成图片或PDF",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "local.pdfpagehelper.win",
+    "productName": "PDF拆页助手",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "28.3.3",
+    "electron-builder": "24.13.3"
+  }
+}

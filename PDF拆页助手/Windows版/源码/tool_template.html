@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 拆页助手 - Windows版</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #f0f2f5; color: #1f2329; height: 100vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .toolbar {
+    background: #fff; padding: 12px 18px; display: flex; align-items: center;
+    gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); flex-wrap: wrap; z-index: 2;
+  }
+  .toolbar h1 { font-size: 16px; margin-right: 8px; color: #2b5cff; white-space: nowrap; }
+  button, select {
+    font-size: 13px; padding: 7px 14px; border: 1px solid #d0d5dd; border-radius: 6px;
+    background: #fff; color: #1f2329; cursor: pointer; transition: .15s;
+  }
+  button:hover:not(:disabled) { border-color: #2b5cff; color: #2b5cff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: #2b5cff; color: #fff; border-color: #2b5cff; }
+  button.primary:hover:not(:disabled) { background: #1e4ae0; color: #fff; }
+  label { font-size: 12px; color: #646a73; }
+  .spacer { flex: 1; }
+  .dropzone {
+    flex: 1; overflow: auto; padding: 20px; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-auto-rows: min-content;
+    gap: 16px; align-content: start;
+  }
+  .dropzone.drag-over { background: #e8efff; outline: 2px dashed #2b5cff; outline-offset: -10px; }
+  .empty {
+    grid-column: 1 / -1; text-align: center;
+    padding: 40px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+  .empty .badge-ring {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(135deg,#6b93ff 0%,#3055eb 100%);
+    box-shadow: 0 10px 28px rgba(48,85,235,.32);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+  }
+  .empty .badge-ring svg { width: 44px; height: 44px; }
+  .empty h2 { font-size: 22px; font-weight: 600; color: #1f2329; margin-bottom: 10px; }
+  .empty .sub { font-size: 13px; color: #8f959e; margin-bottom: 26px; }
+  .empty .open-main {
+    background: #2b5cff; color: #fff; border: 1px solid #2b5cff;
+    font-size: 14px; font-weight: 500; padding: 11px 30px; border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(43,92,255,.28); margin-bottom: 32px;
+  }
+  .empty .open-main:hover { background: #1e4ae0; color: #fff; }
+  .empty .steps { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .empty .step {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(100,106,115,.08); border-radius: 16px;
+    padding: 6px 14px 6px 7px; font-size: 12px; color: #646a73;
+  }
+  .empty .step .n {
+    width: 20px; height: 20px; border-radius: 50%; color: #fff;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #fff; border: 2px solid #e5e6eb; border-radius: 8px;
+    overflow: hidden; cursor: pointer; position: relative; transition: .12s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+  .card.selected { border-color: #2b5cff; background: #eef3ff; }
+  .card.saved { border-color: #00b42a; }
+  .card.selected.saved { border-color: #2b5cff; }
+  /* 缩略图显示框：固定高度，页面按比例完整放入，不裁切不变形 */
+  .card .thumb {
+    height: 230px; display: flex; align-items: center; justify-content: center;
+    background: #eef0f3; padding: 10px; overflow: hidden; box-sizing: border-box;
+  }
+  .card .thumb canvas {
+    max-width: 100%; max-height: 100%; width: auto; height: auto;
+    display: block; background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.12);
+  }
+  /* 缩略图渲染状态覆盖层 */
+  .card .thumb-state {
+    position: absolute; top: 0; left: 0; width: 100%; height: 230px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; background: #fafbfc; color: #8a9099; font-size: 12px; text-align: center;
+    padding: 0 10px; box-sizing: border-box;
+  }
+  .card .thumb-state .spin {
+    width: 20px; height: 20px; border: 2px solid #dfe3e8; border-top-color: #2b5cff;
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card .thumb-state.err { background: #fff5f5; color: #c0392b; cursor: pointer; }
+  .card .thumb-state.err .ico { font-size: 22px; }
+  .card .thumb-state.err .retry {
+    font-size: 11px; color: #2b5cff; border: 1px solid #2b5cff; border-radius: 4px;
+    padding: 2px 8px; margin-top: 2px;
+  }
+  .card .label {
+    text-align: center; font-size: 12px; padding: 7px 0; color: #4e5969;
+    border-top: 1px solid #f0f0f0; background: #fafafa;
+  }
+  .badge {
+    position: absolute; width: 24px; height: 24px; border-radius: 50%;
+    color: #fff; font-size: 12px; font-weight: bold; line-height: 24px; text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+  .badge.sel { top: 8px; left: 8px; background: #2b5cff; }
+  .badge.sav { top: 8px; right: 8px; background: #00b42a; }
+  .status {
+    background: #fff; padding: 8px 18px; font-size: 12px; color: #646a73;
+    border-top: 1px solid #e5e6eb; min-height: 34px;
+  }
+  /* 大图预览 */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.82); display: none;
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  .overlay.show { display: flex; }
+  .overlay img { max-width: 94vw; max-height: 90vh; box-shadow: 0 8px 40px rgba(0,0,0,.5); background: #fff; }
+  .overlay .close {
+    position: absolute; top: 20px; right: 24px; font-size: 30px; color: #fff;
+    background: none; border: none; cursor: pointer; line-height: 1;
+  }
+  .overlay .hint {
+    position: absolute; bottom: 16px; color: #ccc; font-size: 12px;
+  }
+  /* 完成弹窗 */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none;
+    align-items: center; justify-content: center; z-index: 20;
+  }
+  .modal.show { display: flex; }
+  .modal .box {
+    background: #fff; border-radius: 12px; padding: 28px 32px; min-width: 340px;
+    max-width: 520px; box-shadow: 0 12px 48px rgba(0,0,0,.25);
+  }
+  .modal .box h2 { font-size: 19px; margin-bottom: 12px; color: #00b42a; }
+  .modal .box p { font-size: 13px; color: #4e5969; line-height: 1.9; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; }
+  .modal .box button { margin-top: 20px; float: right; }
+  .toast {
+    position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.8); color: #fff; padding: 10px 20px; border-radius: 6px;
+    font-size: 13px; z-index: 30; opacity: 0; transition: .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>📄 PDF 拆页助手 <span style="font-size:11px;background:#00b42a;color:#fff;padding:2px 6px;border-radius:8px;vertical-align:middle;margin-left:4px">v2 修复版</span></h1>
+    <button id="openBtn" class="primary">打开 PDF</button>
+    <label>清晰度</label>
+    <select id="dpi">
+      <option value="150">普通 150</option>
+      <option value="300">高清 300</option>
+      <option value="450">打印 450</option>
+    </select>
+    <label>格式</label>
+    <select id="fmt">
+      <option value="png">PNG</option>
+      <option value="jpeg">JPG</option>
+      <option value="pdf">PDF</option>
+    </select>
+    <button id="clearBtn">清空选择</button>
+    <div class="spacer"></div>
+    <button id="folderBtn" title="选择图片保存的文件夹（首次需选一次，之后自动记住）">📁 保存位置</button>
+    <button id="saveBtn" class="primary" disabled>存选中 (0)</button>
+  </div>
+
+  <div class="dropzone" id="grid">
+    <div class="empty" id="empty">
+      <div class="badge-ring">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 2.5h8l4 4V21a.8.8 0 0 1-.8.8H6a.8.8 0 0 1-.8-.8V3.3A.8.8 0 0 1 6 2.5Z" fill="#fff"/>
+          <path d="M14 2.5v4h4" fill="#c9d6ff"/>
+          <rect x="8" y="11" width="8" height="1.4" rx=".7" fill="#3a5fd0"/>
+          <rect x="8" y="14.3" width="8" height="1.4" rx=".7" fill="#3a5fd0"/>
+          <rect x="8" y="17.6" width="5.5" height="1.4" rx=".7" fill="#3a5fd0"/>
+        </svg>
+      </div>
+      <h2>把 PDF 拖到这里</h2>
+      <div class="sub">或点击下方按钮选择文件，然后勾选想要的页面</div>
+      <button class="open-main" id="emptyOpenBtn">打开 PDF 文件</button>
+      <div class="steps">
+        <span class="step"><span class="n" style="background:#2b5cff">1</span>单击勾选</span>
+        <span class="step"><span class="n" style="background:#9250f0">2</span>双击放大</span>
+        <span class="step"><span class="n" style="background:#00b42a">3</span>存到桌面</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">就绪 · 请打开 PDF</div>
+
+  <input type="file" id="fileInput" accept="application/pdf,.pdf" style="display:none">
+
+  <div class="overlay" id="overlay">
+    <button class="close" id="overlayClose">&times;</button>
+    <img id="bigImg" src="">
+    <div class="hint">按 ESC 或点击图片关闭</div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="box">
+      <h2 id="modalTitle">已存完 ✓</h2>
+      <p id="modalBody"></p>
+      <button class="primary" id="modalOk">好</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* __PDFJS_LIB__ */
+/* __PDFJS_WORKER__ */
+/* __PDFLIB__ */
+
+// ===== 主逻辑 =====
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+// 用内嵌的 worker（blob URL）
+pdfjsLib.GlobalWorkerOptions.workerSrc = window.__PDFJS_WORKER_URL__ || '';
+
+let pdfDoc = null;
+let pageViews = [];        // {index, selected, saved, canvas, card}
+let selectedSet = new Set();
+let currentDocName = 'PDF';
+let renderToken = 0;       // 防止旧任务渲染到新文档
+let saveDirHandle = null;  // 用户选择的保存文件夹句柄
+let sourcePdfBytes = null; // 原始 PDF 字节（用于矢量合并导出）
+
+const $ = id => document.getElementById(id);
+const grid = $('grid'), fileInput = $('fileInput'), status = $('status');
+const saveBtn = $('saveBtn'), clearBtn = $('clearBtn'), dpiSel = $('dpi'), fmtSel = $('fmt');
+
+function setStatus(t) { status.textContent = t; }
+function toast(t) {
+  const el = $('toast'); el.textContent = t; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// 记住上次路径（用 localStorage 存文件名提示；浏览器安全限制无法直接记住绝对路径）
+function rememberName(name) { try { localStorage.setItem('pdfhelper_lastname', name); } catch(e){} }
+
+// 格式切换：PDF 时清晰度无意义（矢量无损），禁用
+fmtSel.onchange = () => { dpiSel.disabled = (fmtSel.value === 'pdf'); };
+
+// 打开文件
+$('openBtn').onclick = () => fileInput.click();
+$('emptyOpenBtn').onclick = () => fileInput.click();
+fileInput.onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+
+// 选择保存文件夹（File System Access API）
+const supportsFSA = typeof window.showDirectoryPicker === 'function';
+$('folderBtn').onclick = async () => {
+  if (!supportsFSA) {
+    toast('当前浏览器不支持选文件夹，图片将存到「下载」文件夹');
+    return;
+  }
+  try {
+    saveDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    $('folderBtn').textContent = '📁 ' + saveDirHandle.name;
+    toast('保存位置已设为：' + saveDirHandle.name);
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('选择失败：' + e.message);
+  }
+};
+
+// 写文件到选中的文件夹；返回是否写入成功
+async function saveBlob(name, blob) {
+  if (saveDirHandle) {
+    try {
+      const fh = await saveDirHandle.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(blob); await w.close();
+      return true;
+    } catch (e) { return false; }
+  }
+  return false; // 走降级下载
+}
+
+// 拖拽
+grid.addEventListener('dragover', e => { e.preventDefault(); grid.classList.add('drag-over'); });
+grid.addEventListener('dragleave', () => grid.classList.remove('drag-over'));
+grid.addEventListener('drop', e => {
+  e.preventDefault(); grid.classList.remove('drag-over');
+  const f = [...e.dataTransfer.files].find(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (f) loadFile(f); else toast('请拖入 PDF 文件');
+});
+
+async function loadFile(file) {
+  setStatus('正在打开 ' + file.name + ' …');
+  rememberName(file.name);
+  try {
+    const buf = await file.arrayBuffer();
+    sourcePdfBytes = new Uint8Array(buf);   // 保留一份用于矢量 PDF 导出
+    pdfDoc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+    currentDocName = file.name.replace(/\.pdf$/i, '');
+    document.title = file.name + ' · ' + pdfDoc.numPages + ' 页 · PDF拆页助手';
+    renderAll();   // 进度与完成提示由 renderQueue 负责更新
+  } catch (err) {
+    setStatus('打开失败：' + err.message);
+    toast('无法打开该 PDF');
+  }
+}
+
+function renderAll() {
+  const token = ++renderToken;
+  grid.innerHTML = '';
+  pageViews = [];
+  selectedSet.clear();
+  updateSaveBtn();
+
+  for (let i = 0; i < pdfDoc.numPages; i++) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    // 缩略图显示框：canvas 按比例完整放入，避免被拉成扁条
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const canvas = document.createElement('canvas');
+    thumb.appendChild(canvas);
+    card.appendChild(thumb);
+    // 渲染状态覆盖层：先显示"渲染中"
+    const st = document.createElement('div');
+    st.className = 'thumb-state';
+    st.innerHTML = '<div class="spin"></div><div>渲染中…</div>';
+    card.appendChild(st);
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = '第 ' + (i + 1) + ' 页';
+    card.appendChild(label);
+    grid.appendChild(card);
+
+    const view = { index: i, selected: false, saved: false, canvas, card, stateEl: st, clickTimer: null, rendered: false };
+    pageViews.push(view);
+
+    card.onclick = ev => {
+      if (ev.detail !== 1) return;
+      // 渲染失败的卡片：点击只重试，不当作勾选
+      if (view.stateEl.classList.contains('err')) { ev.stopPropagation(); retryThumb(view); return; }
+      clearTimeout(view.clickTimer);
+      view.clickTimer = setTimeout(() => toggleSelect(view), 230);
+    };
+    card.ondblclick = ev => {
+      ev.preventDefault();
+      if (view.stateEl.classList.contains('err')) return;
+      clearTimeout(view.clickTimer);   // 双击时取消待执行的单击
+      zoomPage(view);
+    };
+  }
+
+  // 并发控制：一次只渲染少量页，避免大文档打满 worker 导致整批空白
+  renderQueue(pageViews.slice(), token);
+}
+
+// 分批渲染队列：同时最多 4 页，renderToken 变化即整体作废
+let renderConcurrency = 4;
+async function renderQueue(views, token) {
+  let cursor = 0, done = 0, failed = 0;
+  const total = views.length;
+  async function worker() {
+    while (cursor < total) {
+      if (token !== renderToken) return;
+      const v = views[cursor++];
+      const ok = await renderThumb(v, token);
+      done++;
+      if (!ok) failed++;
+      if (token === renderToken) {
+        setStatus('正在生成缩略图 ' + done + '/' + total + (failed ? ' · 失败 ' + failed + ' 页' : ''));
+      }
+    }
+  }
+  await Promise.all(Array.from({length: Math.min(renderConcurrency, total)}, worker));
+  if (token === renderToken) {
+    setStatus(failed
+      ? '已载入 ' + total + ' 页 · 有 ' + failed + ' 页缩略图渲染失败（点该页重试），不影响保存'
+      : '已载入 ' + total + ' 页 · 单击勾选，双击放大，选好后点「存选中」');
+  }
+}
+
+async function renderThumb(view, token) {
+  try {
+    const page = await pdfDoc.getPage(view.index + 1);
+    if (token !== renderToken) return false;
+    const vp0 = page.getViewport({ scale: 1 });
+    const scale = 200 / vp0.height;
+    const vp = page.getViewport({ scale });
+    view.canvas.width = vp.width; view.canvas.height = vp.height;
+    const ctx = view.canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    if (token !== renderToken) return false;
+    view.rendered = true;
+    view.stateEl.remove();
+    return true;
+  } catch (e) {
+    if (token !== renderToken) return false;
+    showThumbError(view, e);
+    return false;
+  }
+}
+
+function showThumbError(view, err) {
+  const st = view.stateEl;
+  st.className = 'thumb-state err';
+  st.innerHTML = '<div class="ico">⚠️</div><div>此页预览失败</div><div class="retry">点击重试</div>';
+  st.title = (err && err.message) || '渲染失败';
+}
+
+async function retryThumb(view) {
+  const st = view.stateEl;
+  if (!st || !st.classList.contains('err')) return;
+  st.className = 'thumb-state';
+  st.innerHTML = '<div class="spin"></div><div>重试中…</div>';
+  const token = renderToken;
+  view.canvas.width = 0; view.canvas.height = 0; // 清掉可能残留的半渲染内容
+  const ok = await renderThumb(view, token);
+  if (ok) toast('第 ' + (view.index + 1) + ' 页预览已恢复');
+}
+
+function toggleSelect(view) {
+  view.selected = !view.selected;
+  view.card.classList.toggle('selected', view.selected);
+  let badge = view.card.querySelector('.badge.sel');
+  if (view.selected) {
+    if (!badge) { badge = document.createElement('div'); badge.className = 'badge sel'; view.card.appendChild(badge); }
+    badge.textContent = [...selectedSet].length + 1; // 下面会重排
+    selectedSet.add(view.index);
+  } else {
+    if (badge) badge.remove();
+    selectedSet.delete(view.index);
+  }
+  // 重排序号
+  let n = 1;
+  for (const idx of selectedSet) {
+    const b = pageViews[idx].card.querySelector('.badge.sel');
+    if (b) b.textContent = n++;
+  }
+  updateSaveBtn();
+  setStatus(selectedSet.size === 0
+    ? '未选中任何页 · 单击页面勾选'
+    : '已选中 ' + selectedSet.size + ' 页 · 点「存选中」保存到图片');
+}
+
+function updateSaveBtn() {
+  saveBtn.textContent = '存选中 (' + selectedSet.size + ')';
+  saveBtn.disabled = selectedSet.size === 0;
+  clearBtn.disabled = selectedSet.size === 0;
+}
+
+clearBtn.onclick = () => {
+  for (const idx of selectedSet) {
+    const v = pageViews[idx];
+    v.selected = false; v.card.classList.remove('selected');
+    const b = v.card.querySelector('.badge.sel'); if (b) b.remove();
+  }
+  selectedSet.clear();
+  updateSaveBtn();
+  setStatus('已清空选择');
+};
+
+// 双击放大
+async function zoomPage(view) {
+  setStatus('正在放大第 ' + (view.index + 1) + ' 页…');
+  try {
+    const page = await pdfDoc.getPage(view.index + 1);
+    const vp0 = page.getViewport({ scale: 1 });
+    // 高分辨率渲染，按屏幕高度约 1.8 倍像素
+    const targetH = Math.max(1400, window.innerHeight * 1.8);
+    const vp = page.getViewport({ scale: targetH / vp0.height });
+    const c = document.createElement('canvas');
+    c.width = vp.width; c.height = vp.height;
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    $('bigImg').src = c.toDataURL('image/png');
+    $('overlay').classList.add('show');
+    setStatus('已选中 ' + selectedSet.size + ' 页 · 点「存选中」保存到图片');
+  } catch (e) {
+    toast('放大失败：' + (e && e.message || '未知错误'));
+    setStatus('放大失败：' + (e && e.message || '未知错误'));
+  }
+}
+$('overlayClose').onclick = () => { $('overlay').classList.remove('show'); $('bigImg').src=''; };
+$('overlay').onclick = e => { if (e.target === $('overlay') || e.target.id === 'bigImg') { $('overlay').classList.remove('show'); $('bigImg').src=''; } };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('overlay').classList.remove('show'); $('modal').classList.remove('show'); } });
+
+// 保存选中
+saveBtn.onclick = async () => {
+  const indices = [...selectedSet].sort((a,b)=>a-b);
+  if (!indices.length) return;
+  const fmt = fmtSel.value;
+  saveBtn.disabled = true;
+
+  if (fmt === 'pdf') {
+    // ===== 矢量 PDF：用 pdf-lib 把选中页合并成一个新 PDF =====
+    setStatus('正在把选中的 ' + indices.length + ' 页合并为 PDF…');
+    const results = [], fails = [];
+    try {
+      const { PDFDocument } = window.PDFLib;
+      const src = await PDFDocument.load(sourcePdfBytes.slice(0), { ignoreEncryption: true });
+      const out = await PDFDocument.create();
+      for (const idx of indices) {
+        try {
+          const [copied] = await out.copyPages(src, [idx]);
+          out.addPage(copied);
+        } catch (e) { fails.push(idx + 1); }
+      }
+      const bytes = await out.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const name = currentDocName + '_选中' + indices.length + '页.pdf';
+      const ok = await saveBlob(name, blob);
+      if (!ok) downloadBlob(blob, name);
+      results.push(name);
+      for (const idx of indices) {
+        pageViews[idx].saved = true;
+        pageViews[idx].card.classList.add('saved');
+        if (!pageViews[idx].card.querySelector('.badge.sav')) {
+          const b = document.createElement('div'); b.className = 'badge sav'; b.textContent = '✓';
+          pageViews[idx].card.appendChild(b);
+        }
+      }
+    } catch (err) {
+      fails.push(...indices.map(i => i + 1));
+      toast('PDF 合并失败：' + err.message);
+    }
+    saveBtn.disabled = false;
+    setStatus('完成：' + (results.length ? indices.length : 0) + '/' + indices.length + ' 页已保存');
+    showDone(results, fails, true);
+    return;
+  }
+
+  // ===== 图片格式（PNG / JPG）=====
+  const dpi = parseInt(dpiSel.value);
+  const ext = fmt === 'jpeg' ? 'jpg' : 'png';
+  setStatus('正在导出 ' + indices.length + ' 页…');
+  const results = [], fails = [];
+  const usedNames = new Set();
+
+  for (const idx of indices) {
+    try {
+      const page = await pdfDoc.getPage(idx + 1);
+      const vp = page.getViewport({ scale: dpi / 72 });
+      const c = document.createElement('canvas');
+      c.width = vp.width; c.height = vp.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      const blob = await new Promise(res => c.toBlob(res, 'image/' + fmt, fmt === 'jpeg' ? 0.92 : undefined));
+      let name = currentDocName + '_第' + (idx + 1) + '页' + '.' + ext;
+      let n = 2;
+      while (usedNames.has(name)) { name = currentDocName + '_第' + (idx+1) + '页_' + (n++) + '.' + ext; }
+      usedNames.add(name);
+      const ok = await saveBlob(name, blob);
+      if (!ok) downloadBlob(blob, name);   // 降级：浏览器下载
+      results.push(name);
+      pageViews[idx].saved = true;
+      pageViews[idx].card.classList.add('saved');
+      if (!pageViews[idx].card.querySelector('.badge.sav')) {
+        const b = document.createElement('div'); b.className = 'badge sav'; b.textContent = '✓';
+        pageViews[idx].card.appendChild(b);
+      }
+      await new Promise(r => setTimeout(r, 120)); // 避免浏览器拦截多个下载
+    } catch (err) {
+      fails.push(idx + 1);
+    }
+  }
+  saveBtn.disabled = false;
+  setStatus('完成：' + results.length + '/' + indices.length + ' 页已保存（未选中的页未处理）');
+  showDone(results, fails, false);
+};
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function showDone(results, fails, isPDF) {
+  $('modalTitle').textContent = fails.length === 0 ? '已存完 ✓' : '保存完成（' + fails.length + ' 页失败）';
+  const where = saveDirHandle ? ('「' + saveDirHandle.name + '」文件夹') : '浏览器「下载」文件夹';
+  let text;
+  if (isPDF) {
+    text = '选中的页已合并成一个矢量 PDF 保存到' + where + '：\n\n' + (results[0] || '(无)');
+  } else {
+    text = '选中的 ' + results.length + ' 页已保存到' + where + '：\n\n' + results.slice(0, 12).join('\n');
+    if (results.length > 12) text += '\n…等 ' + results.length + ' 个文件';
+  }
+  if (fails.length) text += '\n\n失败页码：' + fails.join('、');
+  $('modalBody').textContent = text;
+  $('modal').classList.add('show');
+}
+$('modalOk').onclick = () => $('modal').classList.remove('show');
+</script>
+</body>
+</html>

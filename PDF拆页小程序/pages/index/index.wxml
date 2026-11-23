@@ -1,0 +1,77 @@
+<view class="page">
+
+  <!-- 自定义导航栏：左上角返回箭头（有 PDF 时才显示）+ 标题 -->
+  <view class="nav-bar" style="padding-top: {{statusBarH}}px; height: {{statusBarH + navBarH}}px;">
+    <view class="nav-left">
+      <view class="nav-back" wx:if="{{viewState !== 'empty'}}" bindtap="reset" hover-class="nav-back-hover">‹</view>
+    </view>
+    <view class="nav-title">PDF存图助手</view>
+    <view class="nav-right"></view>
+  </view>
+
+  <view class="header">
+    <view class="subtitle">从PDF中选择自己想存的页码，一键存为jpg、png、pdf</view>
+  </view>
+
+  <view class="empty" wx:if="{{viewState === 'empty'}}">
+    <image class="empty-icon" src="/assets/pdf-icon.png" mode="aspectFit"></image>
+    <view class="empty-title">从微信里选该对话下的 PDF</view>
+    <view class="empty-desc">先把 PDF 发到任意微信聊天（可以发给自己）</view>
+    <view class="empty-desc desc-line2">再回来点下面的按钮</view>
+    <button class="btn primary" bindtap="chooseFile">选择 PDF 文件</button>
+  </view>
+
+  <view class="state-box" wx:if="{{viewState === 'loading'}}">
+    <view class="spinner"></view>
+    <view class="state-text">正在读取 PDF…</view>
+  </view>
+
+  <view class="state-box" wx:if="{{viewState === 'error'}}">
+    <view class="state-icon">!</view>
+    <view class="state-text">{{errMsg}}</view>
+    <button class="btn primary" bindtap="chooseFile">重新选择</button>
+  </view>
+
+  <view class="main" wx:if="{{viewState === 'ready'}}">
+
+    <!-- 文件卡片：点它直接用微信原生打开全文（秒开、全页、可放大、免费） -->
+    <view class="file-card" bindtap="openFullPdf" hover-class="file-card-hover">
+      <view class="file-info">
+        <view class="file-name">{{fileName}}</view>
+        <view class="file-meta">共 {{pageCount}} 页 {{fileSizeText ? '· ' + fileSizeText : ''}}</view>
+      </view>
+      <text class="file-arrow">›</text>
+    </view>
+
+    <!-- 勾选工具栏（上滑吸附在导航栏下方） -->
+    <view class="toolbar" style="top: {{statusBarH + navBarH}}px;">
+      <view class="sel-info">已选 <text class="sel-num">{{selectedCount}}</text> 页 <text class="sel-hint">点放大镜查看该页</text></view>
+      <view class="tool-btns">
+        <text class="link" bindtap="selectAll">全选</text>
+        <text class="link" bindtap="selectNone">清空</text>
+      </view>
+    </view>
+
+    <view class="grid">
+      <view
+        class="num-card {{item.selected ? 'selected' : ''}}"
+        wx:for="{{pages}}"
+        wx:key="n"
+        data-idx="{{index}}"
+        bindtap="togglePage"
+      >
+        <view class="num-big">{{item.n}}</view>
+        <view class="num-zoom" data-idx="{{index}}" catchtap="previewPage"><image class="num-zoom-img" src="/assets/search.png"></image></view>
+        <view class="num-check"><image class="num-check-img" src="/assets/check-white.png"></image></view>
+      </view>
+    </view>
+
+    <view class="bottom">
+      <view class="btn-row">
+        <view class="btn mini primary {{exporting || selectedCount === 0 ? 'is-disabled' : ''}}" bindtap="savePng">存图片</view>
+        <view class="btn mini pdfbtn {{exporting || selectedCount === 0 ? 'is-disabled' : ''}}" bindtap="exportPdf">存 PDF</view>
+      </view>
+    </view>
+  </view>
+
+</view>
