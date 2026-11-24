@@ -10,6 +10,9 @@ Thumbs.db
 .workbuddy/
 *.genie
 
+# 小程序本机私有配置（含真实渲染密钥，勿入库）
+PDF拆页小程序/config.js
+
 # 打包构建产物（体积大、可由源码重建，不入库）
 *.zip
 *.app

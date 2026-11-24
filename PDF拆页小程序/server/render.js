@@ -47,9 +47,9 @@ function initDeps() {
 }
 initDeps();
 
-// 简单并发闸门：2c2g 服务器最多同时跑 2 个渲染任务，避免内存爆掉
+// 简单并发闸门：服务器上还跑着其他项目（可用内存约 500MB），同时只跑 1 个渲染任务，避免内存爆掉
 let running = 0;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 1;
 const queue = [];
 
 function acquireSlot() {

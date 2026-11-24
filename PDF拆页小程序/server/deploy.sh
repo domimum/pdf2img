@@ -36,9 +36,9 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$DIR
-Environment=PORT=3000
+Environment=PORT=3001
 Environment=RENDER_TOKEN=CHANGE_ME_TOKEN
-ExecStart=/usr/bin/node $DIR/index.js
+ExecStart=$(command -v node) $DIR/index.js
 Restart=always
 RestartSec=3
 
@@ -55,7 +55,7 @@ echo "========== 部署完成 =========="
 echo "服务状态:"
 systemctl status pdf-render --no-pager | head -12
 echo ""
-echo "测试: curl http://localhost:3000/health"
+echo "测试: curl http://localhost:3001/health"
 echo ""
 echo "⚠️  重要："
 echo "  1. 编辑 /etc/systemd/system/pdf-render.service 里的 RENDER_TOKEN，改成你自己的密钥"

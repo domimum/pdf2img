@@ -1,10 +1,12 @@
 const pdfLib = require('../../utils/pdf-lib.js');
 
 // ===== 自有服务器渲染配置 =====
-// 部署好服务器后，把 SERVER_URL 换成你的 HTTPS 域名（如 https://pdf.你的域名.com）
-// RENDER_TOKEN 要和服务器环境变量 RENDER_TOKEN 保持一致
-const SERVER_URL = 'https://YOUR_DOMAIN.com';
-const RENDER_TOKEN = 'CHANGE_ME_TOKEN';
+// 真实值在不入库的 config.js（同目录参考 config.example.js 复制一份填好即可）
+// RENDER_TOKEN 要和服务器 /etc/systemd/system/pdf-render.service 里的值保持一致
+let serverConfig = { SERVER_URL: '', RENDER_TOKEN: '' };
+try { serverConfig = require('../../config.js'); } catch (e) {}
+const SERVER_URL = serverConfig.SERVER_URL;
+const RENDER_TOKEN = serverConfig.RENDER_TOKEN;
 const IMG_HEIGHT = 1800;   // 渲染高度：A4 打印清晰档
 
 // 给异步操作加超时保护，避免云函数卡住时界面无限等待
@@ -167,16 +169,20 @@ Page({
     let res;
     try {
       res = await withTimeout(
-        wx.uploadFile({
-          url: SERVER_URL + '/render',
-          filePath: smallPath,
-          name: 'file',
-          header: { 'x-render-token': RENDER_TOKEN },
-          formData: {
-            pages: pageNumbers.map((_, i) => i + 1).join(','),  // 小 PDF 里的页码
-            height: String(height),
-            format,
-          },
+        new Promise((resolve, reject) => {
+          wx.uploadFile({
+            url: SERVER_URL + '/render',
+            filePath: smallPath,
+            name: 'file',
+            header: { 'x-render-token': RENDER_TOKEN },
+            formData: {
+              pages: pageNumbers.map((_, i) => i + 1).join(','),  // 小 PDF 里的页码
+              height: String(height),
+              format,
+            },
+            success: resolve,
+            fail: reject,
+          });
         }),
         60000,
         '渲染'
