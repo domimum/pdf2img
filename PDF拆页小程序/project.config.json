@@ -37,7 +37,6 @@
   "appid": "wx67a18da8e1c925d2",
   "projectname": "PDF存图助手",
   "miniprogramRoot": "./",
-  "cloudfunctionRoot": "cloudfunctions/",
   "simulatorPluginLibVersion": {},
   "editorSetting": {},
   "isGameTourist": false
