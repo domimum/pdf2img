@@ -505,13 +505,12 @@ Page({
     try {
       const built = await this.buildSelectedPdf();
       if (!built) { wx.hideLoading(); this.setData({ exporting: false }); return; }
-      const { outPath, outName, pageTag, count } = built;
+      const { outPath, outName, count } = built;
       wx.hideLoading();
       this.setData({ exporting: false });
       this._outPdf = outPath;
       wx.showModal({
         title: '已生成 ' + count + ' 页',
-        content: '勾选页码：' + pageTag + '\n文件名：' + outName,
         cancelText: '打开预览',
         confirmText: '转发保存',
         success: (r) => {

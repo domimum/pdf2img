@@ -70,6 +70,32 @@
   color: #8a9099;
 }
 
+/* 意见反馈：仅首页，固定在屏幕底部横条上方，灰色小字 */
+.feedback-row {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(8rpx + env(safe-area-inset-bottom));
+  z-index: 25;
+  display: flex;
+  justify-content: center;
+}
+.feedback-btn {
+  margin: 0;
+  padding: 8rpx 16rpx;
+  width: auto;
+  min-height: 0;
+  line-height: 1.5;
+  font-size: 22rpx;
+  font-weight: normal;
+  color: #a0a6ae;
+  background: transparent;
+  border: none;
+}
+.feedback-btn::after {
+  border: none;
+}
+
 /* 空状态 */
 .empty {
   display: flex;

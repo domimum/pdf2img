@@ -21,6 +21,11 @@
     <button class="btn primary" bindtap="chooseFile">选择 PDF 文件</button>
   </view>
 
+  <!-- 意见反馈：仅首页，固定在屏幕底部横条上方 -->
+  <view class="feedback-row" wx:if="{{viewState === 'empty'}}">
+    <button class="feedback-btn" open-type="contact">意见反馈</button>
+  </view>
+
   <view class="state-box" wx:if="{{viewState === 'loading'}}">
     <view class="spinner"></view>
     <view class="state-text">正在读取 PDF…</view>
